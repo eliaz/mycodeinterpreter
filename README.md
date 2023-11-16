@@ -1,21 +1,29 @@
-# MY CODE INTERPRETER
-## EXPERIMENTAL
+# MyCodeInterpreter
+## ⚠ **Warning:** Experimental and very unsecure, run at your own risk! And Obviously do not share any GPT's you make towards this backend ⚠
+⚠ Dont run it unless you read through the code and understand what its doing and its dangers.  ⚠
 
+## Introduction
 **Make chatGPT use your own server as backend for execution. Like code-interpreter but on your own machine.**
+MyCodeInterpreter is a tool that lets you use ChatGPT with your own server for code execution. It’s like having a code interpreter, but it operates right from your machine. This project is about linking your custom GPT Bot with your server, enhancing its capabilities.
 
-It uses [ngrok](https://ngrok.com) to get a "https" URL with proper certificates that OpenAI will accept.
-After execution, you will be provided with a URL where you can fetch an OpenAPI schema to paste into a MyGPT action over at the chatgpt ui. This will enable chatgpt to make actions on your server like uploading/downloading files, and executing cli commands. 
-Pasting the openapi schema is something you will need to do after every restart of the backend since your ngrok uri might differ if you have a free account.
+The process involves using ngrok to create a secure "https" URL, which is compatible with OpenAI's standards. After running MyCodeInterpreter, you'll get a URL. This URL contains an OpenAPI schema that you can integrate into your GPT Bot, providing it with shell access to your server.
 
-#![Example](mygptcli.png "MyCodeInterpreter")
 
-### To build:
+
+* Integrates [ngrok](https://ngrok.com/) for easy and  secure "https" URLs behind firewalls and nat.
+* Generates an OpenAPI schema for integrating with a custom GPT Bot. 
+* Runs easily in docker
+
+  
+![Example](mygptcli.png "MyCodeInterpreter")
+
+### Build:
 ```
-go get
-go build
+$ go get
+$ go build
 ```
 
-### To run:
+### Run
 ```
 NGROK_AUTHTOKEN="<TOKEN>" go run mycodeinterpreter.go <your-auth-to-give-openai|noauth> [-nosafe] [-semisafe]
 ```
@@ -25,6 +33,21 @@ NGROK_AUTHTOKEN="<TOKEN>" go run mycodeinterpreter.go <your-auth-to-give-openai|
 
 Unfortunately, I'm not able to get OpenAI to save any auth keys, so it will have to be run with `noauth` for now due to this. Therefore, the basic auth feature is also not tested.
 
+
+### Running with Docker
+```
+$ docker build -t mycodeinterpreter .
+Successfully built 8624b517394c
+Successfully tagged mycodeinterpreter:latest
+
+
+$ docker run -it --name myinterpreter -e NGROK_AUTHTOKEN=<your-token-here>  mycodeinterpreter
+Starting ngrok
+2023/11/17 20:07:04 [info] client session established map[id:6bc45a55d418 obj:csess]
+2023/11/17 20:07:04 tunnel created: https://f15e-38-242-159-27.ngrok-free.app
+OpenAPI schema at https://f15e-38-242-159-27.ngrok-free.app/openapi.json
+Starting server at https://f15e-38-242-159-27.ngrok-free.app
+```
 
 ### Example Execution
 
@@ -48,8 +71,23 @@ This output means that your local server is now accessible over the internet via
 
 Please note that each time you restart the project, `ngrok` will generate a new HTTPS URL, so you'll need to update your MyGPT action accordingly to reflect the changes.
 
+### Create a custom GPT Bot using this backend
+> Note: you may need a paid ChatGPT plan to create and use custom GPTs right now
 
-### Suggestionprompt
+1. Go to [https://chat.openai.com/](https://chat.openai.com/)
+2. Click your name in the bottom left corner
+3. Choose "My GPTs" in the menu
+4. Choose "Create a GPT"
+5. Choose "Configure"
+6. Considering describing your system a bit, have a look at the suggestion prompt below
+7. Click "Create new action" and paste the json schema you find in the openapi.json link you got when you started the golang code
+8. You should be able to click on authentication and add your basic authentication key, but I have not been able to get openai to save a key , so noauth is the only option for now it seems. 
+9. Test and save
+
+If ngrok url changes you will have to delete the action and recreate a new one by clicking "Create new action again"
+
+
+####  Suggestionprompt
 
 I have an api to control my prompters  server. I will act as a cli - when user inputs cli commands i will forward the commands to the remote server and return the results. 
 If the user desribes an action to take I will try to interpret that to cli commands and take actions on the server and explain the results.
@@ -133,3 +171,5 @@ paths:
         '403':
           description: 'Forbidden: Execution cancelled by admin or in safe mode.'
 ```
+
+

@@ -4,27 +4,22 @@ import (
 	"context"
 	"os/exec"
 	"time"
-	"log"
 	"io/ioutil"
 	"net/http"
 	"os"
 	"strings"
 	"encoding/base64"
+	"log"
 	"github.com/fatih/color"
 	"golang.ngrok.com/ngrok"
 	"golang.ngrok.com/ngrok/config"
+ 	 ngrok_log "golang.ngrok.com/ngrok/log"
 
 )
 
 var safeMode bool = true
 var semisafe bool = false
 var openAPISchema = ""
-
-type OpenAPISchema struct {
-	OpenAPI string                 `json:"openapi"`
-	Info    map[string]interface{} `json:"info"`
-	Paths   map[string]interface{} `json:"paths"`
-}
 
 // Colored logger for HTTP requests
 var (
@@ -228,7 +223,7 @@ func handleExecCmd(w http.ResponseWriter, r *http.Request, authKey string) {
                 http.Error(w, "Unauthorized", http.StatusUnauthorized)
                 return
         }
-   	infoLogger("Exec call permitted\n")	
+   	infoLogger("Exec call permitted\n")
 
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
@@ -276,11 +271,35 @@ func setupRoutes(authKey string) {
 }
 
 
+
+// Simple logger that forwards to the Go standard logger.
+type logger struct {
+	lvl ngrok_log.LogLevel
+}
+
+func (l *logger) Log(ctx context.Context, lvl ngrok_log.LogLevel, msg string, data map[string]interface{}) {
+	if lvl > l.lvl {
+		return
+	}
+	lvlName, _ := ngrok_log.StringFromLogLevel(lvl)
+	log.Printf("[%s] %s %v", lvlName, msg, data)
+}
+
 func startNgrok(authKey string, ctx context.Context) error {
-	infoLogger("starting ngrok")
+	infoLogger("Starting ngrok\n")
+	lvl, err := ngrok_log.LogLevelFromString("info")
+	if err != nil {
+		log.Printf("%s",err)
+	}
+	ngrokAuthToken := os.Getenv("NGROK_AUTHTOKEN")
+
+    	if ngrokAuthToken == "" {
+        	log.Fatal("NGROK_AUTHTOKEN is not set")
+        }
 	tun, err := ngrok.Listen(ctx,
 		config.HTTPEndpoint(),
-		ngrok.WithAuthtokenFromEnv(),
+		ngrok.WithAuthtoken(ngrokAuthToken),
+		ngrok.WithLogger(&logger{lvl}),
 	)
 	if err != nil {
 		return err
@@ -290,7 +309,7 @@ func startNgrok(authKey string, ctx context.Context) error {
 	address:=tun.URL()
         openAPISchema = getOpenAPISchema(address)
         infoLogger("OpenAPI schema at %s/openapi.json\n", address)
-        infoLogger("Starting server at%s\n", address)
+        infoLogger("Starting server at %s\n", address)
 	setupRoutes(authKey)
 	return  http.Serve(tun, nil)
 }
