@@ -25,7 +25,7 @@ $ go build
 
 ### Run
 ```
-NGROK_AUTHTOKEN="<TOKEN>" go run mycodeinterpreter.go <your-auth-to-give-openai|noauth> [-nosafe] [-semisafe]
+NGROK_AUTHTOKEN="<TOKEN>" ./mycodeinterpreter <your-auth-to-give-openai|noauth> [-nosafe] [-semisafe]
 ```
 
 - Safemode is default, which means all actions will have to be confirmed in the backend on `stdin` by answering a `y/n` query. This is disabled with `-nosafe`.
@@ -60,7 +60,7 @@ $ NGROK_AUTHTOKEN=<TOKEN> go run mycodeinterpreter.go noauth
 Upon execution, `ngrok` will establish a secure tunnel and provide you with a unique HTTPS URL. Your terminal should output messages indicating the establishment of the tunnel and the server starting up, similar to the following:
 
 ```
-NGROK_AUTHTOKEN=<token> go run mycodeinterpreter.go  noauth
+NGROK_AUTHTOKEN=<token> ./mycodeinterpreter  noauth
 starting ngrok
 2023/11/16 23:37:44 tunnel created: https://2ae4-38-242-159-27.ngrok.io
 OpenAPI schema at https://2ae4-38-242-159-27.ngrok.io/openapi.json
