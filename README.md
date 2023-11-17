@@ -51,12 +51,7 @@ Starting server at https://f15e-38-242-159-27.ngrok-free.app
 
 ### Example Execution
 
-After you have built the project and are ready to run it, you can start the server using the command below:
-
-```
-$ NGROK_AUTHTOKEN=<TOKEN> go run mycodeinterpreter.go noauth
-```
-
+After you have built the project and are ready to run it, you can start the server using the command below
 Upon execution, `ngrok` will establish a secure tunnel and provide you with a unique HTTPS URL. Your terminal should output messages indicating the establishment of the tunnel and the server starting up, similar to the following:
 
 ```
