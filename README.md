@@ -167,4 +167,5 @@ paths:
           description: 'Forbidden: Execution cancelled by admin or in safe mode.'
 ```
 
-
+##### TODO
+File uploads & downloads through the openapi schema dont work. 
