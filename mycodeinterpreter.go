@@ -23,10 +23,26 @@ var openAPISchema = ""
 
 // Colored logger for HTTP requests
 var (
-	infoLogger  = color.New(color.FgGreen).PrintfFunc()
-	errorLogger = color.New(color.FgRed).PrintfFunc()
+    logger *log.Logger
 )
 
+func init() {
+    // Create a custom logger
+    logger = log.New(os.Stdout, "", 0)
+}
+
+func mlog(logType, format string, a ...interface{}) {
+    var message string
+    switch logType {
+    case "info":
+        message = color.GreenString(fmt.Sprintf(format, a...))
+    case "error":
+        message = color.RedString(fmt.Sprintf(format, a...))
+    default:
+        message = fmt.Sprintf(format, a...) // No color for undefined types
+    }
+    logger.Println(message)
+}
 
 
 func getOpenAPISchema(ip string) string {
@@ -114,7 +130,7 @@ paths:
 
 func logRequest(handler http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		infoLogger("Request: %s %s\n", r.Method, r.URL.Path)
+		mlog("info","Request: %s %s", r.Method, r.URL.Path)
 		handler.ServeHTTP(w, r)
 	})
 }
@@ -130,27 +146,28 @@ func CheckBasicAuth(authKey string, r *http.Request,w http.ResponseWriter) bool 
 		authEncoded := strings.TrimPrefix(authHeader, "Basic ")
 		payload, _ := base64.StdEncoding.DecodeString(authEncoded)
 		if (fmt.Sprintf("user:%s", authKey) != string(payload) )  {
-			infoLogger("Basic auth failed, key was %s",payload)
+			mlog("info","Basic auth failed, key was %s",payload)
 			return false
 		}
 	}
         if (safeMode){ //SAFEMODE IS ON
        	       // Verification step
- 	      fmt.Printf("Execute command? (y/n): ")
+ 	      mlog("error","Execute command? (y/n): ")
 	       var response string
 	       _, err := fmt.Scanln(&response)
 	       if err != nil   {return false}
 	       if response != "y" {
-	                http.Error(w, "Execution cancelled by admin\n", http.StatusForbidden)
+	                http.Error(w, "Execution cancelled by admin", http.StatusForbidden)
+			mlog("error","Aborting execution")
 	                return false
 	       }
 
        }else{
-            infoLogger("WARNING SAFEMODE IS OFF, ABOUT TO EXECUTE!\n")
+            mlog("info","WARNING SAFEMODE IS OFF, ABOUT TO EXECUTE!\n")
        }
 
        if (semisafe){
-	    infoLogger("Semisafe is on, sleeping 2 seconds so that you can ctrl+c this madness before execution\n")
+	    mlog("info","Semisafe is on, sleeping 2 seconds so that you can ctrl+c this madness before execution\n")
 	    time.Sleep(2 * time.Second)
 	    return true
 	}
@@ -163,13 +180,14 @@ func getFileHandler(w http.ResponseWriter, r *http.Request, authKey string) {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
-	infoLogger("getFile permitted\n")
+	mlog("info","getFile permitted\n")
 
 	filename := r.URL.Query().Get("filename")
 	if filename == "" {
 		http.Error(w, "Filename is required", http.StatusBadRequest)
 		return
 	}
+	mlog("info","Fetching file %s",filename)
 
 	data, err := ioutil.ReadFile(filename)
 	if err != nil {
@@ -185,7 +203,7 @@ func sendFileHandler(w http.ResponseWriter, r *http.Request, authKey string) {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
-	infoLogger("sendFile permited\n")
+	mlog("info","sendFile permited\n")
 
 	file, _, err := r.FormFile("file")
 	if err != nil {
@@ -217,20 +235,23 @@ func handleExecCmd(w http.ResponseWriter, r *http.Request, authKey string) {
 	       http.Error(w, "Bad Request: cmd parameter missing", http.StatusBadRequest)
 	       return
         }
-	infoLogger("Incomling cli exe:"+cmdStr+"\n")
+	mlog("info","Incomling cli exe:"+cmdStr)
 
 	if !CheckBasicAuth(authKey, r,w) {
                 http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		mlog("error","returning unauthorized due to basicauth fail")
                 return
         }
-   	infoLogger("Exec call permitted\n")
+   	mlog("info","Exec call permitted")
 
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+		mlog("error","Incorrect request (post)")
+
 		return
 	}
 
-	infoLogger("Executing Cli request:"+cmdStr+"\n")
+	mlog("info","Executing Cli request:"+cmdStr+"")
 	  // Set up a context with a timeout
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second) //for now always 60 sec, we could fork it after that and keep them running and return that its passed on as background process
 	defer cancel()
@@ -245,7 +266,7 @@ func handleExecCmd(w http.ResponseWriter, r *http.Request, authKey string) {
 //	if err != nil{infoLogger("execution returned error:%e",err)} //TODO: we should probably do something here
 
 	w.Header().Set("Content-Type", "text/plain")
-	infoLogger("Execution response: %s\n", string(output))
+	mlog("info","Execution response: %s\n", string(output))
 	w.Write(output)
 }
 
@@ -273,11 +294,11 @@ func setupRoutes(authKey string) {
 
 
 // Simple logger that forwards to the Go standard logger.
-type logger struct {
+type grocklogger struct {
 	lvl ngrok_log.LogLevel
 }
 
-func (l *logger) Log(ctx context.Context, lvl ngrok_log.LogLevel, msg string, data map[string]interface{}) {
+func (l *grocklogger) Log(ctx context.Context, lvl ngrok_log.LogLevel, msg string, data map[string]interface{}) {
 	if lvl > l.lvl {
 		return
 	}
@@ -286,7 +307,7 @@ func (l *logger) Log(ctx context.Context, lvl ngrok_log.LogLevel, msg string, da
 }
 
 func startNgrok(authKey string, ctx context.Context) error {
-	infoLogger("Starting ngrok\n")
+	mlog("info","Starting ngrok")
 	lvl, err := ngrok_log.LogLevelFromString("info")
 	if err != nil {
 		log.Printf("%s",err)
@@ -299,7 +320,7 @@ func startNgrok(authKey string, ctx context.Context) error {
 	tun, err := ngrok.Listen(ctx,
 		config.HTTPEndpoint(),
 		ngrok.WithAuthtoken(ngrokAuthToken),
-		ngrok.WithLogger(&logger{lvl}),
+		ngrok.WithLogger(&grocklogger{lvl}),
 	)
 	if err != nil {
 		return err
@@ -308,8 +329,8 @@ func startNgrok(authKey string, ctx context.Context) error {
 	log.Println("tunnel created:", tun.URL())
 	address:=tun.URL()
         openAPISchema = getOpenAPISchema(address)
-        infoLogger("OpenAPI schema at %s/openapi.json\n", address)
-        infoLogger("Starting server at %s\n", address)
+        mlog("info","OpenAPI schema at %s/openapi.json", address)
+        mlog("info","Starting server at %s", address)
 	setupRoutes(authKey)
 	return  http.Serve(tun, nil)
 }
