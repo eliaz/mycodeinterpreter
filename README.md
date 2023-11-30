@@ -14,8 +14,12 @@ The process involves using ngrok to create a secure "https" URL, which is compat
 * Generates an OpenAPI schema for integrating with a custom GPT Bot. 
 * Runs easily in docker
 
-  
-![Example](mygptcli.png "MyCodeInterpreter")
+
+
+
+https://github.com/eliaz/mycodeinterpreter/assets/4517054/13e17fb6-7e32-4cfa-ae70-72343e242d38
+
+
 
 ### Build:
 ```
