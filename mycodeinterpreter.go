@@ -199,33 +199,55 @@ func getFileHandler(w http.ResponseWriter, r *http.Request, authKey string) {
 }
 
 func sendFileHandler(w http.ResponseWriter, r *http.Request, authKey string) {
-	if !CheckBasicAuth(authKey, r,w) {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
-		return
-	}
-	mlog("info","sendFile permited\n")
+ // Check for basic authentication
+    if !CheckBasicAuth(authKey, r, w) {
+        http.Error(w, "Unauthorized", http.StatusUnauthorized)
+	mlog("info","unauthorized")
+        return
+    }
+    mlog("info", "sendFile permitted")
 
-	file, _, err := r.FormFile("file")
-	if err != nil {
-		http.Error(w, "Bad request", http.StatusBadRequest)
-		return
-	}
-	defer file.Close()
+    // Only accept POST requests
+    if r.Method != "POST" {
+        http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
+	mlog("error","Invalid request method")
+        return
+    }
 
-	data, err := ioutil.ReadAll(file)
-	if err != nil {
-		http.Error(w, "Error reading file", http.StatusInternalServerError)
-		return
-	}
+    // Parse the multipart form (max upload size set to 10 MB)
+    err := r.ParseMultipartForm(10 << 20)
+    if err != nil {
+        http.Error(w, "Error parsing multipart form", http.StatusBadRequest)
+	mlog("error","Error parsing multipart form")
+        return
+    }
 
-	filename := "received_file" // Replace this with an appropriate file naming mechanism
-	err = ioutil.WriteFile(filename, data, 0644)
-	if err != nil {
-		http.Error(w, "Error writing file", http.StatusInternalServerError)
-		return
-	}
+    // Retrieve the file from form data
+    file, handler, err := r.FormFile("file")
+    if err != nil {
+        http.Error(w, "Error retrieving the file", http.StatusBadRequest)
+	mlog("error","Error parsing multipart form")
+        return
+    }
+    defer file.Close()
 
-	fmt.Fprintf(w, "File saved successfully as %s", filename)
+    // Read the file content
+    fileData, err := ioutil.ReadAll(file)
+    if err != nil {
+        http.Error(w, "Error reading the file", http.StatusInternalServerError)
+	mlog("error","Error reading the file")
+        return
+    }
+
+    // Write the file to the server with the original filename
+    err = ioutil.WriteFile(handler.Filename, fileData, 0644)
+    if err != nil {
+        http.Error(w, "Error writing the file", http.StatusInternalServerError)
+	mlog("error","Error writing the file")
+        return
+    }
+    mlog("info","File saved successfully as %s",handler.Filename)
+    fmt.Fprintf(w, "File saved successfully as %s", handler.Filename)
 }
 
 
@@ -253,7 +275,7 @@ func handleExecCmd(w http.ResponseWriter, r *http.Request, authKey string) {
 
 	mlog("info","Executing Cli request:"+cmdStr+"")
 	  // Set up a context with a timeout
-	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second) //for now always 60 sec, we could fork it after that and keep them running and return that its passed on as background process
+	ctx, cancel := context.WithTimeout(context.Background(), 300*time.Second) //for now always 300 sec, we could fork it after that and keep them running and return that its passed on as background process
 	defer cancel()
 	cmd := exec.CommandContext(ctx, "sh", "-c", cmdStr) // Use CommandContext
 	output, _ := cmd.CombinedOutput()
