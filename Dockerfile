@@ -16,7 +16,11 @@ RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o mycodeinterpreter
 
 # Use a smaller base image for the runtime
 FROM ubuntu:22.04
-RUN apt-get update && apt-get install -y ca-certificates sudo curl wget golang-go python3 python3-pip && rm -rf /var/lib/apt/lists/*
+RUN apt-get update
+RUN apt-get install -y ca-certificates sudo curl wget golang-go python3 python3-pip vim
+RUN rm -rf /var/lib/apt/lists/*
+RUN ln -s /usr/bin/python3 /usr/bin/python
+
 WORKDIR /root/
 
 # Copy the pre-built binary file from the previous stage
